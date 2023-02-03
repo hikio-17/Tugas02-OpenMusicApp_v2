@@ -1,0 +1,30 @@
+{
+  "name": "tugas2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start-dev": "nodemon ./src/server.js",
+    "migrate": "node-pg-migrate"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hapi/hapi": "^21.2.1",
+    "@hapi/jwt": "^3.0.0",
+    "bcrypt": "^5.1.0",
+    "dotenv": "^16.0.3",
+    "joi": "^17.7.0",
+    "nanoid": "^3.1.20",
+    "node-pg-migrate": "^6.2.2",
+    "pg": "^8.9.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.33.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.27.5",
+    "nodemon": "^2.0.20"
+  }
+}
