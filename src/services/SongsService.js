@@ -1,7 +1,9 @@
+/* eslint-disable max-len */
 const { Pool } = require('pg');
 const { nanoid } = require('nanoid');
 const InvariantError = require('../exceptions/InvariantError');
 const NotFoundError = require('../exceptions/NotFoundError');
+const mapDBToModel = require('../utils/mapDBToModel');
 
 class SongsService {
   constructor() {
@@ -11,7 +13,7 @@ class SongsService {
   async addSong({
     title, year, genre, performer, duration, albumId,
   }) {
-    const id = `Song-${nanoid(16)}`;
+    const id = `song-${nanoid(16)}`;
 
     const query = {
       text: 'INSERT INTO songs VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id',
@@ -27,10 +29,29 @@ class SongsService {
     return result.rows[0].id;
   }
 
-  async getSongs() {
+  async getSongs({ title, performer }) {
     const result = await this._pool.query('SELECT id, title, performer FROM songs');
 
-    return result.rows[0];
+    const songs = result.rows;
+
+    if (title && performer) {
+      const songsByTitlePerformer = songs.filter((song) => song.title.toLowerCase().includes(title.toLowerCase()) && song.performer.toLowerCase().includes(performer.toLowerCase()));
+
+      return songsByTitlePerformer;
+    }
+
+    if (title) {
+      const songsByTitle = songs.filter((song) => song.title.toLowerCase().includes(title.toLowerCase()));
+
+      return songsByTitle;
+    }
+
+    if (performer) {
+      const songsByPerformer = songs.filter((song) => song.performer.toLowerCase().includes(performer.toLowerCase()));
+
+      return songsByPerformer;
+    }
+    return result.rows;
   }
 
   async getSongById(id) {
@@ -45,7 +66,7 @@ class SongsService {
       throw new NotFoundError('Songs tidak ditemukan');
     }
 
-    return result.rows[0];
+    return result.rows.map(mapDBToModel)[0];
   }
 
   async editSongById(id, {

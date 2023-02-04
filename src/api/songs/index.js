@@ -1,4 +1,4 @@
-const routes = require('../albums/routes');
+const routes = require('./routes');
 const SongsHandler = require('./handler');
 
 module.exports = {
