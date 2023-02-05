@@ -1,3 +1,6 @@
+/* eslint-disable no-plusplus */
+/* eslint-disable no-unreachable-loop */
+/* eslint-disable no-await-in-loop */
 const { Pool } = require('pg');
 const { nanoid } = require('nanoid');
 const InvariantError = require('../exceptions/InvariantError');
@@ -74,6 +77,63 @@ class PlaylistsService {
     if (playlist.owner !== userId) {
       throw new AuthorizationError('Anda tidak berhak mengakses resource ini');
     }
+  }
+
+  async addSongsInPlaylist(playlistId, songId) {
+    const query = {
+      text: 'SELECT * FROM songs WHERE id = $1',
+      values: [songId],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rowCount) {
+      throw new NotFoundError('Song tidak ditemukan');
+    }
+
+    const id = `songPlaylist-${nanoid(16)}`;
+    const addSongQuery = {
+      text: 'INSERT INTO playlistsongs VALUES($1, $2, $3) RETURNING id',
+      values: [id, playlistId, songId],
+    };
+
+    await this._pool.query(addSongQuery);
+  }
+
+  async getSongsInPlaylist(playlistId) {
+    const queryPlaylist = {
+      text: 'SELECT playlists.id, playlists.name, users.username FROM playlists INNER JOIN users ON users.id = playlists.owner WHERE playlists.id = $1 ',
+      values: [playlistId],
+    };
+
+    const resultPlaylist = await this._pool.query(queryPlaylist);
+
+    const playlist = resultPlaylist.rows[0];
+
+    const querySongs = {
+      text: 'SELECT songs.id, songs.title, songs.performer FROM songs INNER JOIN playlistsongs ON playlistsongs.song_id = songs.id WHERE playlistsongs.playlist_id = $1',
+      values: [playlistId],
+    };
+
+    const resultSongs = await this._pool.query(querySongs);
+
+    const songsInPlaylist = resultSongs.rows;
+
+    const data = {
+      ...playlist,
+      songs: songsInPlaylist,
+    };
+
+    return data;
+  }
+
+  async deleteSongsInPlaylist(playlistId, songId) {
+    const query = {
+      text: 'DELETE FROM playlistsongs WHERE playlistsongs.playlist_id = $1 AND playlistsongs.song_id = $2',
+      values: [playlistId, songId],
+    };
+
+    await this._pool.query(query);
   }
 }
 
