@@ -9,10 +9,10 @@ class PlaylistsService {
     this._pool = new Pool();
   }
 
-  async addPlaylist({ name, owner }) {
+  async addPlaylist(name, owner) {
     const id = `playlist-${nanoid(16)}`;
     const query = {
-      text: 'INSERT INTO playlists VALUES($1. $2, $3) RETURNING id',
+      text: 'INSERT INTO playlists VALUES($1, $2, $3) RETURNING id',
       values: [id, name, owner],
     };
 
@@ -27,16 +27,24 @@ class PlaylistsService {
 
   async getPlaylists(owner) {
     const query = {
-      text: 'SELECT playlists.id, playlists.name, users.username FROM playlists LEFT JOIN users ON users.id = playlists.owner WHERE playlists.id = $1',
+      text: 'SELECT * FROM users,playlists WHERE playlists.owner = $1 AND users.id = $1',
       values: [owner],
     };
 
     const result = await this._pool.query(query);
 
-    return result.rows;
+    const data = [];
+
+    result.rows.map((p) => data.push({
+      id: p.id,
+      name: p.name,
+      username: p.username,
+    }));
+
+    return data;
   }
 
-  async deletePlaylist(id) {
+  async deletePlaylistById(id) {
     const query = {
       text: 'DELETE FROM playlists WHERE id = $1',
       values: [id],
