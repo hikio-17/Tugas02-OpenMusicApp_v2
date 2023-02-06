@@ -32,21 +32,6 @@ class PlaylistsService {
 
   async getPlaylists(owner) {
     const query = {
-      text: 'SELECT * FROM users,playlists WHERE playlists.owner = $1 AND users.id = $1',
-      values: [owner],
-    };
-
-    const result = await this._pool.query(query);
-
-    const data = [];
-
-    result.rows.map((p) => data.push({
-      id: p.id,
-      name: p.name,
-      username: p.username,
-    }));
-
-    const query1 = {
       text: `SELECT playlists.id, playlists.name, users.username FROM playlists
       INNER JOIN users ON users.id = playlists.owner
       LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id
@@ -54,9 +39,9 @@ class PlaylistsService {
      `,
       values: [owner],
     };
-    const resultQuery1 = await this._pool.query(query1);
+    const result = await this._pool.query(query);
 
-    return resultQuery1.rows;
+    return result.rows;
   }
 
   async deletePlaylistById(id) {
@@ -91,31 +76,31 @@ class PlaylistsService {
     }
   }
 
-  async verifyPlaylistAccess(playlistId, userId) {
-    const queryOwner = {
-      text: 'SELECT * FROM playlists WHERE id = $1',
-      values: [playlistId],
-    };
-
-    const resultOwner = await this._pool.query(queryOwner);
-
-    const queryCollabolator = {
+  async verifyCollabolator(playlistId, userId) {
+    const query = {
       text: 'SELECT * FROM collaborations WHERE playlist_id = $1 AND user_id = $2',
       values: [playlistId, userId],
     };
 
-    const resultCollabolator = await this._pool.query(queryCollabolator);
+    const result = await this._pool.query(query);
 
-    if (!resultOwner.rowCount) {
-      throw NotFoundError('playlist tidak ditemukan');
-    }
-
-    if (resultOwner.rowCount && resultOwner.rows[0].owner !== userId && !resultCollabolator.rowCount) {
-      throw new AuthorizationError('Anda tidak berhak mengakses resource ini');
-    }
-
-    if (!resultCollabolator.rowCount) {
+    if (!result.rowCount) {
       throw new InvariantError('Kolaborasi gagal diverifikasi');
+    }
+  }
+
+  async verifyPlaylistAccess(playlistId, userId) {
+    try {
+      await this.verifyPlaylistOwner(playlistId, userId);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      try {
+        await this.verifyCollabolator(playlistId, userId);
+      } catch {
+        throw error;
+      }
     }
   }
 
@@ -171,6 +156,44 @@ class PlaylistsService {
     const query = {
       text: 'DELETE FROM playlistsongs WHERE playlistsongs.playlist_id = $1 AND playlistsongs.song_id = $2',
       values: [playlistId, songId],
+    };
+
+    await this._pool.query(query);
+  }
+
+  async getPlaylistActivitiesById(playlistId) {
+    const query = {
+      text: `SELECT users.username, songs.title, playlist_song_activities.action, playlist_song_activities.time
+      FROM playlist_song_activities 
+      INNER JOIN users ON users.id = playlist_song_activities.user_id
+      INNER JOIN songs ON songs.id = playlist_song_activities.song_id
+      WHERE playlist_id = $1`,
+      values: [playlistId],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rowCount) {
+      throw InvariantError('Belum ada aktivitas pada playlist');
+    }
+
+    const activities = result.rows;
+
+    const data = {
+      playlistId,
+      activities,
+    };
+
+    return data;
+  }
+
+  async addActivitiesInPlaylist(playlistId, songId, userId, action) {
+    const id = `activities-${nanoid(16)}`;
+    const time = new Date().toISOString();
+
+    const query = {
+      text: 'INSERT INTO playlist_song_activities VALUES($1, $2, $3, $4, $5, $6)',
+      values: [id, playlistId, songId, userId, action, time],
     };
 
     await this._pool.query(query);
