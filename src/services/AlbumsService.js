@@ -3,7 +3,6 @@ const { Pool } = require('pg');
 const { nanoid } = require('nanoid');
 const InvariantError = require('../exceptions/InvariantError');
 const NotFoundError = require('../exceptions/NotFoundError');
-const { mapAlbumToModel } = require('../utils/mapAlbumToModel');
 
 class AlbumsService {
   constructor() {
@@ -28,38 +27,36 @@ class AlbumsService {
   }
 
   async getAlbumById(id) {
-    const queryAlbumWithSongs = {
-      text: 'SELECT * FROM albums,songs WHERE songs.album_id = $1 AND albums.id = $1',
-      values: [id],
-    };
-
-    const queryAlbumWithoutSongs = {
+    const queryAlbum = {
       text: 'SELECT * FROM albums WHERE id = $1',
       values: [id],
     };
 
-    const albumWithSongs = await this._pool.query(queryAlbumWithSongs);
+    const resultAlbum = await this._pool.query(queryAlbum);
 
-    const albumWithoutSongs = await this._pool.query(queryAlbumWithoutSongs);
+    if (!resultAlbum.rowCount) {
+      throw new NotFoundError('Album tidak ditemukan');
+    }
 
-    const listSongs = [];
+    const album = resultAlbum.rows[0];
 
-    const album = albumWithoutSongs.rows.map(mapAlbumToModel)[0];
+    const querySongInAlbum = {
+      text: `SELECT songs.id, songs.performer 
+      FROM songs
+      INNER JOIN albums ON albums.id = songs.album_id
+      WHERE albums.id = $1
+      `,
+      values: [id],
+    };
 
-    albumWithSongs.rows.map((song) => listSongs.push({
-      id: song.id,
-      title: song.titile,
-      performer: song.performer,
-    }));
+    const resultSongs = await this._pool.query(querySongInAlbum);
+
+    const songs = resultSongs.rows;
 
     const data = {
       ...album,
-      songs: listSongs,
+      songs,
     };
-
-    if (!listSongs.length && !albumWithoutSongs.rowCount) {
-      throw new NotFoundError('Album tidak ditemukan');
-    }
 
     return data;
   }

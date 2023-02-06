@@ -46,20 +46,6 @@ class CollaborationsService {
       throw new InvariantError('Kolaborasi gagal dihapus');
     }
   }
-
-  async verifyCollaborator(playlistId, userId) {
-    const query = {
-      text: 'SELECT * FROM collaborations WHERE playlist_id = $1 AND user_id = $2',
-      values: [playlistId, userId],
-    };
-
-    console.log(playlistId);
-    const result = await this._pool.query(query);
-
-    if (!result.rowCount) {
-      throw new InvariantError('Kolaborasi gagal diverifikasi');
-    }
-  }
 }
 
 module.exports = CollaborationsService;

@@ -37,12 +37,12 @@ const CollaborationsValidator = require('./validator/collaborations');
 const CollaborationsService = require('./services/CollaborationsService');
 
 const init = async () => {
-  const collaborationsService = new CollaborationsService();
-  const playlistsService = new PlaylistsService(collaborationsService);
+  const playlistsService = new PlaylistsService();
   const albumsService = new AlbumsService();
   const songsService = new SongsService();
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
+  const collaborationsService = new CollaborationsService();
 
   const server = Hapi.server({
     port: process.env.PORT,
@@ -127,11 +127,9 @@ const init = async () => {
   ]);
 
   server.ext('onPreResponse', (request, h) => {
-    // mendapatkan kontekst response dari request
     const { response } = request;
 
     if (response instanceof Error) {
-      // penanganan client error secara internal.
       if (response instanceof ClientError) {
         const newResponse = h.response({
           status: 'fail',
@@ -141,12 +139,10 @@ const init = async () => {
         return newResponse;
       }
 
-      // mempertahankan penanganan client error oleh hapi secara native
       if (!response.isServer) {
         return h.continue;
       }
 
-      // pengangan server error sesuai kebutuhan
       const newResponse = h.response({
         status: 'error',
         message: 'Maaf, terjadi kegagalan pada sistem kami',
@@ -155,7 +151,6 @@ const init = async () => {
       return newResponse;
     }
 
-    // jika bukan error, lanjutkan dengan response sebelumnya
     return h.continue;
   });
 
